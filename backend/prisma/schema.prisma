@@ -1,0 +1,635 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "windows"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  name          String
+  email         String
+  emailVerified Boolean  @default(false)
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Auth Relations
+  sessions Session[]
+  accounts Account[]
+  devices  Device[]
+
+  // App Relations
+  courses              Course[]              @relation("UserCourses")
+  submissions          ExamSubmission[]
+  chats                ChatSession[]
+  subscription         Subscription?
+  transactions         Transaction[]
+  credits              Int                   @default(0)
+  passkeys             Passkey[]
+  storageUsage         StorageUsage?
+  storageSubscriptions StorageSubscription[]
+  documents            Document[]
+  learningProgresses   LearningProgress[]
+  notifications        Notification[]
+  studyGoals           StudyGoal[]
+  exams                Exam[]
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id @default(uuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id @default(uuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+model Device {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId     String
+  platform     String
+  pushToken    String
+  appVersion   String?
+  osVersion    String?
+  lastActiveAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, deviceId])
+  @@index([userId])
+}
+
+model Course {
+  id          String  @id @default(uuid())
+  title       String
+  description String?
+  userId      String
+  user        User    @relation("UserCourses", fields: [userId], references: [id], onDelete: Cascade)
+
+  documents Document[]
+  exams     Exam[]
+  chats     ChatSession[]
+
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  learningProgresses LearningProgress[]
+  studyGoals         StudyGoal[]
+
+  @@index([userId])
+}
+
+model Document {
+  id    String @id @default(uuid())
+  title String
+
+  fileUrl  String
+  fileKey  String
+  fileType String
+  fileSize BigInt
+
+  isVectorized VectorStatus @default(PENDING)
+  vectorId     String?
+
+  hash         String?   @unique
+  pageCount    Int?
+  vectorizedAt DateTime?
+
+  courseId String?
+  course   Course? @relation(fields: [courseId], references: [id])
+
+  userId String
+  user   User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exams  Exam[]                @relation("ExamDocuments")
+  chats  ChatSessionDocument[]
+  chunks Chunk[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([courseId])
+}
+
+enum VectorStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model Chunk {
+  id         String   @id @default(uuid())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  content       String
+  index         Int
+  page          Int?
+  chapter       String?
+  chapterNumber Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([documentId])
+}
+
+model ChatSession {
+  id     String  @id @default(uuid())
+  title  String?
+  userId String
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  courseId String?
+  course   Course? @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  documents ChatSessionDocument[]
+
+  messages    Message[]
+  memoryState Json?
+
+  summary   String?
+  keyTopics String[]
+  entities  Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([courseId, createdAt])
+}
+
+model ChatSessionDocument {
+  chatSessionId String
+  documentId    String
+
+  chatSession ChatSession @relation(fields: [chatSessionId], references: [id], onDelete: Cascade)
+  document    Document    @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@id([chatSessionId, documentId])
+  @@index([documentId])
+}
+
+model Message {
+  id            String      @id @default(uuid())
+  chatSessionId String
+  chatSession   ChatSession @relation(fields: [chatSessionId], references: [id], onDelete: Cascade)
+
+  role      Role
+  content   String @db.Text
+  citations Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([chatSessionId, createdAt])
+  @@index([id])
+}
+
+enum Role {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+model Exam {
+  id                String       @id @default(uuid())
+  title             String
+  instruction       String?
+  type              ExamType[]
+  difficulty        Difficulty   @default(MEDIUM)
+  courseId          String?
+  course            Course?      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  examStructure     Json?
+  hasStarted        Boolean      @default(false)
+  questionsStatus   VectorStatus @default(PENDING)
+  duration          Int
+  numberOfQuestions Int?
+
+  topics    String[]
+  passScore Float?   @default(50.0)
+
+  submissions ExamSubmission[]
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  documents Document[] @relation("ExamDocuments")
+
+  @@index([courseId])
+  @@index([id])
+}
+
+model ExamSubmission {
+  id             String @id @default(uuid())
+  userId         String
+  user           User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  examId         String
+  exam           Exam   @relation(fields: [examId], references: [id], onDelete: Cascade)
+  examStructure  Json?
+  score          Float?
+  aiFeedback     Json?
+  areasToImprove Json?
+
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  @@unique([userId, examId])
+  @@index([examId])
+  @@index([id])
+}
+
+enum ExamType {
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  SHORT_ANSWER
+  ESSAY
+  MULTI_SELECT
+  MIXED
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+model Plan {
+  id       String         @id @default(uuid())
+  name     String
+  interval String
+  country  String
+  priceId  String
+  amount   Decimal        @db.Decimal(10, 2)
+  currency String
+  isActive Boolean        @default(true)
+  subs     Subscription[]
+}
+
+model CreditPackage {
+  id           String        @id @default(uuid())
+  credits      Int
+  transactions Transaction[]
+  isActive     Boolean       @default(true)
+}
+
+model Subscription {
+  id String @id @default(uuid())
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  planId String
+  plan   Plan   @relation(fields: [planId], references: [id])
+
+  status           SubscriptionStatus
+  currentPeriodEnd DateTime
+
+  stripeSubId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Transaction {
+  id String @id @default(uuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  amount   Decimal @db.Decimal(10, 2)
+  currency String
+  type     String
+
+  createdAt       DateTime       @default(now())
+  creditPackage   CreditPackage? @relation(fields: [creditPackageId], references: [id])
+  creditPackageId String?
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+}
+
+model Passkey {
+  id           String   @id @default(uuid())
+  name         String?
+  publicKey    String
+  credentialID String   @unique
+  counter      Int
+  deviceType   String
+  backedUp     Boolean
+  transports   String?
+  createdAt    DateTime @default(now())
+  aaguid       String?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("passkey")
+}
+
+model StorageUsage {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  usedBytes  BigInt @default(0)
+  limitBytes BigInt @default(1073741824)
+
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
+
+model StoragePlan {
+  id         String  @id @default(uuid())
+  name       String
+  limitBytes BigInt
+  priceId    String?
+  amount     Decimal @db.Decimal(10, 2)
+  currency   String
+  isActive   Boolean @default(true)
+
+  subscriptions StorageSubscription[]
+}
+
+model StorageSubscription {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  planId String
+  plan   StoragePlan @relation(fields: [planId], references: [id])
+
+  status           StorageStatus
+  currentPeriodEnd DateTime
+  stripeSubId      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum StorageStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+}
+
+model LearningProgress {
+  id       String @id @default(uuid())
+  userId   String
+  courseId String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  courseMastery     Float @default(0.0)
+  totalStudyTime    Int   @default(0)
+  sessionsCompleted Int   @default(0)
+
+  topicMasteries TopicMastery[]
+  weakAreas      WeakArea[]
+
+  progressHistory Json?
+
+  lastAssessmentScore Float?
+  lastAssessmentDate  DateTime?
+
+  recommendedTopics String[]
+
+  isCompleted             Boolean   @default(false)
+  completedAt             DateTime?
+  estimatedCompletionDate DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+  @@index([id])
+}
+
+model TopicMastery {
+  id                 String           @id @default(uuid())
+  learningProgressId String
+  learningProgress   LearningProgress @relation(fields: [learningProgressId], references: [id], onDelete: Cascade)
+
+  topic String
+
+  mastery    Float @default(0.0)
+  confidence Float @default(0.0)
+
+  questionsAttempted Int @default(0)
+  questionsCorrect   Int @default(0)
+  timeSpent          Int @default(0)
+
+  lastPracticed DateTime?
+  startedAt     DateTime  @default(now())
+
+  relatedDocumentIds String[]
+  chatSessionIds     String[]
+
+  @@unique([learningProgressId, topic])
+  @@index([learningProgressId])
+}
+
+model WeakArea {
+  id                 String           @id @default(uuid())
+  learningProgressId String
+  learningProgress   LearningProgress @relation(fields: [learningProgressId], references: [id], onDelete: Cascade)
+
+  topic    String
+  subTopic String?
+  weakness String
+
+  firstIdentified DateTime @default(now())
+  lastEncountered DateTime @updatedAt
+  frequency       Int      @default(1)
+
+  chatSessionIds String[]
+  questionIds    String[]
+
+  status             String   @default("active")
+  suggestedResources String[]
+  practiceCount      Int      @default(0)
+
+  @@unique([learningProgressId, topic, weakness])
+  @@index([learningProgressId])
+}
+
+model Notification {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title   String
+  message String
+  type    NotificationType
+
+  // Context
+  entityType EntityType?
+
+  // Trigger
+  trigger TriggerType @default(MANUAL)
+
+  // Delivery
+  channel    ChannelType    @default(IN_APP)
+  status     DeliveryStatus @default(PENDING)
+  retryCount Int            @default(0)
+
+  isSilent Boolean @default(false)
+  actions  Json?
+
+  // Relationships
+  goalId String?
+  goal   StudyGoal? @relation(fields: [goalId], references: [id])
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+enum NotificationType {
+  REMINDER // "Time to study!"
+  ACHIEVEMENT // "Goal completed!"
+  PROGRESS // "You're 80% to your goal"
+  DEADLINE // "Exam in 3 days"
+  RECOMMENDATION // "Try this practice set"
+  SYSTEM // "New feature available"
+  SOCIAL // "Your friend completed a goal"
+}
+
+enum EntityType {
+  GOAL
+  COURSE
+  EXAM
+  CHAT_SESSION
+  DOCUMENT
+  SUBSCRIPTION
+  ACHIEVEMENT
+}
+
+enum TriggerType {
+  SCHEDULED
+  EVENT_BASED
+  MANUAL
+  SYSTEM
+}
+
+enum ChannelType {
+  IN_APP
+  EMAIL
+  PUSH
+}
+
+enum DeliveryStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+  CANCELLED
+}
+
+model StudyGoal {
+  id       String  @id @default(uuid())
+  userId   String
+  courseId String?
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course? @relation(fields: [courseId], references: [id])
+
+  title       String
+  description String?
+
+  type GoalType
+
+  targetValue  Float?
+  currentValue Float   @default(0.0)
+  unit         String?
+
+  startDate   DateTime  @default(now())
+  targetDate  DateTime?
+  isRecurring Boolean   @default(false)
+
+  progress Float      @default(0.0)
+  status   GoalStatus @default(ACTIVE)
+
+  topic String?
+
+  lastUpdatedAt DateTime @updatedAt
+
+  createdAt     DateTime       @default(now())
+  completedAt   DateTime?
+  notifications Notification[]
+
+  @@index([userId])
+  @@index([courseId])
+}
+
+enum GoalType {
+  COURSE_MASTERY // Reach X% mastery in a course
+  TOPIC_MASTERY // Master specific topic
+  STUDY_TIME // Study X hours
+  PRACTICE_COUNT // Complete X questions
+  EXAM_PREP // Prepare for specific exam
+  CONSISTENCY // Study X days per week
+}
+
+enum GoalStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  FAILED
+}
