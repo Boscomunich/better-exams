@@ -1,29 +1,49 @@
 import { Toast, useToastController, useToastState } from "@tamagui/toast";
-import { Button, H4, XStack, YStack, isWeb } from "tamagui";
+import { Button, H4 } from "tamagui";
+import { CheckCircle, AlertCircle, Info } from "@tamagui/lucide-icons";
+import { XStack, YStack, isWeb, SizableText } from "tamagui";
 
 export function CurrentToast() {
   const currentToast = useToastState();
+  if (!currentToast) return null;
 
-  if (!currentToast || currentToast.isHandledNatively) return null;
+  // Handle different presets for colors/icons
+  const preset = currentToast.customData?.preset || "info";
+  const config = {
+    success: { bg: "$green10", icon: <CheckCircle size={18} color="white" /> },
+    error: { bg: "$red10", icon: <AlertCircle size={18} color="white" /> },
+    info: { bg: "$blue10", icon: <Info size={18} color="white" /> },
+  } as const;
+
+  const active = config[preset];
 
   return (
     <Toast
       key={currentToast.id}
       duration={currentToast.duration}
-      viewportName={currentToast.viewportName}
-      enterStyle={{ opacity: 0, scale: 0.5, y: -25 }}
+      enterStyle={{ opacity: 0, scale: 0.5, y: -50 }}
       exitStyle={{ opacity: 0, scale: 1, y: -20 }}
-      y={isWeb ? "$12" : 0}
-      theme="accent"
-      rounded="$6"
+      y={isWeb ? "$12" : "$8"} // Adjust for status bar on mobile
       animation="quick"
+      rounded="$6"
+      bg={active.bg}
+      p="$3"
+      px="$5"
+      elevate
     >
-      <YStack items="center" p="$2" gap="$2">
-        <Toast.Title fontWeight="bold">{currentToast.title}</Toast.Title>
-        {!!currentToast.message && (
-          <Toast.Description>{currentToast.message}</Toast.Description>
-        )}
-      </YStack>
+      <XStack gap="$3" items="center">
+        {active.icon}
+        <YStack>
+          <Toast.Title fontWeight="700" color="white" fontSize="$3">
+            {currentToast.title}
+          </Toast.Title>
+          {!!currentToast.message && (
+            <Toast.Description color="white" fontSize="$2" opacity={0.9}>
+              {currentToast.message}
+            </Toast.Description>
+          )}
+        </YStack>
+      </XStack>
     </Toast>
   );
 }
@@ -39,6 +59,9 @@ export default function ToastControl() {
           onPress={() => {
             toast.show("Successfully saved!", {
               message: "Don't worry, we've got your data.",
+              customData: {
+                preset: "success",
+              },
             });
           }}
         >
@@ -54,4 +77,29 @@ export default function ToastControl() {
       </XStack>
     </YStack>
   );
+}
+
+export type ToastPreset = "success" | "error" | "info";
+
+export type ToastOptions = {
+  title: string;
+  message?: string;
+  preset: ToastPreset;
+  duration?: number;
+};
+
+export function useAppToast() {
+  const toast = useToastController();
+
+  const showToast = ({ title, message, preset, duration }: ToastOptions) => {
+    return toast.show(title, {
+      message,
+      duration,
+      customData: {
+        preset,
+      },
+    });
+  };
+
+  return { show: showToast, hide: toast.hide };
 }

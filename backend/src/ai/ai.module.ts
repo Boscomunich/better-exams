@@ -11,6 +11,7 @@ import { LLMRouterService } from './router.service';
 import { VectorizeModule } from 'src/vectorize/vectorize.module';
 import { AIChatService } from './chat.service';
 import { AiClientModule } from 'src/aiclient/aiclient.module';
+import { AIExamService } from './exam.service';
 
 @Module({
   providers: [
@@ -21,6 +22,7 @@ import { AiClientModule } from 'src/aiclient/aiclient.module';
     LightAiModelProvider,
     HeavyAiModelProvider,
     AIChatService,
+    AIExamService,
   ],
   controllers: [AiController],
   exports: [AiModelProvider, LightAiModelProvider, AIChatService],

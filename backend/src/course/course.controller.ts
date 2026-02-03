@@ -1,4 +1,12 @@
-import { Controller, Post, Body, Get, Query, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Query,
+  Delete,
+  Param,
+} from '@nestjs/common';
 import { Session, UserSession } from '@thallesp/nestjs-better-auth';
 import { CourseService } from './course.service';
 import { CreateCourseDto } from './dto/create.dto';
@@ -15,6 +23,11 @@ export class CourseController {
     @Session() session: UserSession,
   ) {
     return await this.courseService.fetchUserCourse(data, session.user.id);
+  }
+
+  @Get(':id')
+  async getCourseById(@Param('id') id: string) {
+    return await this.courseService.getCourseById(id);
   }
 
   @Post()

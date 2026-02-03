@@ -13,7 +13,6 @@ export const HeavyAiModelProvider: Provider = {
       apiKey: process.env.NVIDIA_NIM_API_KEY,
       model: 'meta/llama-3.3-70b-instruct',
       temperature: 0.6,
-      maxTokens: 4096,
       configuration: {
         baseURL: 'https://integrate.api.nvidia.com/v1',
       },

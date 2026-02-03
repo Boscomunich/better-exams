@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateExamDto } from './dto/create .dto';
+import { VectorStatus } from '@prisma/client';
 
 @Injectable()
 export class ExamService {
@@ -32,5 +33,25 @@ export class ExamService {
       message: 'sucessfully created exams, pending ai question generation',
       data: exam,
     };
+  }
+
+  async getExam(id: string) {
+    const exam = await this.prisma.exam.findUnique({
+      where: {
+        id,
+      },
+    });
+    return exam;
+  }
+
+  async getExamWithProcessedQuestion(id: string) {
+    const exam = await this.prisma.exam.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    if (exam?.questionsStatus === VectorStatus.COMPLETED) return exam;
+    return null;
   }
 }

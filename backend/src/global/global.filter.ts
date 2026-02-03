@@ -12,6 +12,17 @@ export class AllExceptionsFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse();
+    const request = ctx.getRequest();
+
+    // --- LOG EVERYTHING TO THE CONSOLE ---
+    console.error('--- Exception Caught ---');
+    console.error('URL:', request.url);
+    console.error('Method:', request.method);
+    console.error('Body:', request.body);
+    console.error('Query:', request.query);
+    console.error('Params:', request.params);
+    console.error('Exception:', exception);
+    // --------------------------------------
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let errorType = 'INTERNAL_SERVER_ERROR';
@@ -35,7 +46,6 @@ export class AllExceptionsFilter implements ExceptionFilter {
         message = exceptionResponse.message[0] || 'Validation failed.';
         errorType = 'VALIDATION_ERROR';
       } else {
-        // This handles Prisma errors thrown as HttpExceptions and other standard errors
         message = exceptionResponse.message || exception.message;
         errorType = exceptionResponse.error
           ? exceptionResponse.error.toUpperCase().replace(/[^A-Z0-9_]+/g, '_')
@@ -46,7 +56,6 @@ export class AllExceptionsFilter implements ExceptionFilter {
     response.status(status).json({
       statusCode: status,
       error: errorType,
-      // Ensure the message is always a single string before returning
       message: Array.isArray(message) ? message[0] : message,
     });
   }

@@ -4,9 +4,10 @@ import { UploadFilesEvent } from 'src/events/dto/file-upload.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { deleteS3Files } from 'libs/s3';
 import { StorageService } from 'src/storage/storage.service';
-import { UpdateDocumentsDto } from './dto/update.dto';
+import { AddDocumentsToChatDto, UpdateDocumentsDto } from './dto/update.dto';
 import { FetchDocDto } from 'src/documents/dto/fetchdocs.dto';
 import { DeleteDocumentsDto } from './dto/delete.dto';
+import { Document } from '@prisma/client';
 
 @Injectable()
 export class DocumentsService {
@@ -89,23 +90,26 @@ export class DocumentsService {
 
     const [documents, totalCount] = await Promise.all([
       this.prisma.document.findMany({
-        where: {
-          userId,
-        },
-        orderBy: {
-          createdAt: data.order || 'desc',
-        },
-        skip: skip,
+        where: { userId },
+        orderBy: { createdAt: data.order || 'desc' },
+        skip,
         take: data.limit,
       }),
-      this.prisma.document.count({
-        where: { userId },
-      }),
+      this.prisma.document.count({ where: { userId } }),
     ]);
 
+    // Convert BigInts and Dates to Strings for Redux compatibility
+    const sanitizedDocuments = documents.map((doc: Document) => ({
+      ...doc,
+      fileSize: doc.fileSize.toString(),
+      createdAt: doc.createdAt.toISOString(),
+      updatedAt: doc.updatedAt.toISOString(),
+      vectorizedAt: doc.vectorizedAt?.toISOString(),
+    }));
+
     return {
-      message: 'sucessful',
-      data: documents,
+      message: 'successful',
+      data: sanitizedDocuments,
       meta: {
         totalCount,
         currentPage: data.page,
@@ -158,9 +162,9 @@ export class DocumentsService {
   }
 
   async addDocumentsToCourse(data: UpdateDocumentsDto) {
-    const documents = await this.prisma.document.updateMany({
+    await this.prisma.document.updateMany({
       where: {
-        id: { in: data.documentsIds },
+        id: { in: data.documentIds },
       },
       data: {
         courseId: data.courseId,
@@ -168,14 +172,13 @@ export class DocumentsService {
     });
     return {
       message: 'Successfully added documents to course',
-      data: documents,
     };
   }
 
   async removeDocumentsFromCourse(data: UpdateDocumentsDto) {
-    const documents = await this.prisma.document.updateMany({
+    await this.prisma.document.updateMany({
       where: {
-        id: { in: data.documentsIds },
+        id: { in: data.documentIds },
       },
       data: {
         courseId: null,
@@ -183,7 +186,44 @@ export class DocumentsService {
     });
     return {
       message: 'Successfully removed documents to course',
-      data: documents,
+    };
+  }
+
+  async addDocumentsToChat(data: AddDocumentsToChatDto) {
+    await this.prisma.chatSession.update({
+      where: { id: data.chatSessionId },
+      data: {
+        documents: {
+          create: data.documentIds.map((documentId) => ({
+            document: {
+              connect: { id: documentId },
+            },
+          })),
+        },
+      },
+    });
+
+    return {
+      message: 'Successfully added documents to chat',
+    };
+  }
+
+  async removeDocumentsFromChat(data: AddDocumentsToChatDto) {
+    await this.prisma.chatSession.update({
+      where: { id: data.chatSessionId },
+      data: {
+        documents: {
+          deleteMany: {
+            documentId: {
+              in: data.documentIds,
+            },
+          },
+        },
+      },
+    });
+
+    return {
+      message: 'Successfully removed documents from chat',
     };
   }
 }

@@ -1,18 +1,26 @@
-export const getApiErrorMessage = (errorCode: string | undefined) => {
-  if (!errorCode) return authApiErrorMessages.UNKNOWN_ERROR;
-  return authApiErrorMessages[errorCode] || authApiErrorMessages.UNKNOWN_ERROR;
+export const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return "0 Bytes";
+
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 };
 
-const authApiErrorMessages: Record<string, string> = {
-  REGISTER_USER_ALREADY_EXISTS:
-    "This email is already registered. Please sign in instead.",
-  LOGIN_BAD_CREDENTIALS: "Invalid email or password",
-  USER_NOT_FOUND: "No user found with the provided credentials.",
-  INVALID_PASSWORD: "The password you entered is incorrect.",
-  USER_ALREADY_VERIFIED: "Your email is already verified.",
-  TOKEN_INVALID: "Invalid or expired token. Please try again.",
-  FIELD_REQUIRED: "Please fill in all required fields.",
-  EMAIL_NOT_VERIFIED: "Your email has not been verified yet.",
-  TOO_MANY_REQUESTS: "Too many requests. Please try again later.",
-  UNKNOWN_ERROR: "Something went wrong. Please try again.",
+export const formatDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffTime = Math.abs(now.getTime() - date.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) {
+    return "Today";
+  } else if (diffDays === 1) {
+    return "Yesterday";
+  } else if (diffDays < 7) {
+    return `${diffDays} days ago`;
+  } else {
+    return date.toLocaleDateString();
+  }
 };

@@ -1,12 +1,7 @@
 import { Tabs } from "expo-router";
 import { useTheme } from "tamagui";
-import {
-  Home,
-  BookOpen,
-  PenSquare,
-  History,
-  User,
-} from "@tamagui/lucide-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import SimpleLineIcons from "@expo/vector-icons/SimpleLineIcons";
 
 export default function TabLayout() {
   const theme = useTheme();
@@ -15,11 +10,6 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        headerStyle: {
-          backgroundColor: theme.background?.val,
-          borderBottomColor: theme.borderColor?.val,
-        },
-        headerTintColor: theme.color?.val,
         tabBarStyle: {
           backgroundColor: theme.background?.val,
           borderTopColor: theme.borderColor?.val,
@@ -29,7 +19,7 @@ export default function TabLayout() {
           height: 60,
         },
         tabBarActiveTintColor: "#E71066",
-        tabBarInactiveTintColor: "#8E8E93",
+        tabBarInactiveTintColor: theme.accentBackground?.val,
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: "600",
@@ -42,7 +32,30 @@ export default function TabLayout() {
         options={{
           title: "Home",
           tabBarIcon: ({ color, size }) => (
-            <Home size={size} color={color as any} />
+            <Ionicons name="home-outline" size={size} color={color as any} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="library"
+        options={{
+          title: "Library",
+          tabBarIcon: ({ color, size }) => (
+            <SimpleLineIcons name="notebook" size={size} color={color as any} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="chat"
+        options={{
+          title: "Chat",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons
+              name="chatbox-ellipses-outline"
+              size={size}
+              color={color as any}
+            />
           ),
         }}
       />
@@ -51,25 +64,7 @@ export default function TabLayout() {
         options={{
           title: "Courses",
           tabBarIcon: ({ color, size }) => (
-            <BookOpen size={size} color={color as any} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="exams"
-        options={{
-          title: "Exams",
-          tabBarIcon: ({ color, size }) => (
-            <PenSquare size={size} color={color as any} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="history"
-        options={{
-          title: "History",
-          tabBarIcon: ({ color, size }) => (
-            <History size={size} color={color as any} />
+            <Ionicons name="book-outline" size={size} color={color as any} />
           ),
         }}
       />
@@ -78,7 +73,7 @@ export default function TabLayout() {
         options={{
           title: "Profile",
           tabBarIcon: ({ color, size }) => (
-            <User size={size} color={color as any} />
+            <SimpleLineIcons name="user" size={size} color={color as any} />
           ),
         }}
       />

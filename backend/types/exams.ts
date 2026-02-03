@@ -35,7 +35,7 @@ export interface MultipleChoiceQuestion extends BaseQuestion {
     isCorrect: boolean;
     feedback?: string;
   }[];
-  answerFormat: AnswerFormat.SINGLE | AnswerFormat.MULTIPLE;
+  answerFormat: AnswerFormat.SINGLE;
 }
 
 export interface TrueFalseQuestion extends BaseQuestion {

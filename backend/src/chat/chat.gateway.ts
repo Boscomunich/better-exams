@@ -12,6 +12,7 @@ import { Session, UserSession } from '@thallesp/nestjs-better-auth';
 import { Inject, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@thallesp/nestjs-better-auth';
 import { ClientProxy } from '@nestjs/microservices';
+import { ChatSession } from '@prisma/client';
 
 @WebSocketGateway({
   namespace: 'chat',
@@ -30,19 +31,30 @@ export class ChatGateway {
     @Inject('AI_SERVICE') private readonly aiClient: ClientProxy,
   ) {}
 
+  handleConnection(client: any) {
+    const token = client.handshake.auth?.token;
+    if (token) {
+      client.request.headers.authorization = `Bearer ${token}`;
+    }
+    console.log(`Connection attempt: ${client.id}`);
+  }
+
+  handleDisconnect(client: Socket) {
+    console.log(`Socket disconnected: ${client.id}`);
+  }
+
   @SubscribeMessage('sendMessage')
   async handleMessage(
     @MessageBody() chatData: any,
     @ConnectedSocket() client: Socket,
     @Session() session: UserSession,
   ) {
-    const chat: ChatWithDocumentDto = JSON.parse(chatData as string);
+    const chat: ChatWithDocumentDto =
+      typeof chatData === 'string' ? JSON.parse(chatData) : chatData;
+    let newChat: ChatSession | null = null;
 
     if (!chat.chatSessionId) {
-      const newChat = await this.chatService.createChatSession(
-        session.user.id,
-        chat,
-      );
+      newChat = await this.chatService.createChatSession(session.user.id, chat);
       chat.chatSessionId = newChat.id;
     }
 
@@ -76,7 +88,7 @@ export class ChatGateway {
     console.log(chat);
     return {
       status: 'processing',
-      chatSessionId: chat.chatSessionId,
+      chatSession: newChat ? newChat : null,
     };
   }
 

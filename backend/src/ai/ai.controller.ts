@@ -1,11 +1,16 @@
 import { Controller } from '@nestjs/common';
-import { MessagePattern, Payload } from '@nestjs/microservices';
+import { EventPattern, MessagePattern, Payload } from '@nestjs/microservices';
 import { AIChatService } from './chat.service';
 import { ChatWithDocumentDto } from 'src/chat/dto/create';
+import { Exam } from '@prisma/client';
+import { AIExamService } from './exam.service';
 
 @Controller()
 export class AiController {
-  constructor(private readonly chatService: AIChatService) {}
+  constructor(
+    private readonly chatService: AIChatService,
+    private readonly examService: AIExamService,
+  ) {}
 
   @MessagePattern('process_chat')
   async handleProcessChat(
@@ -18,5 +23,10 @@ export class AiController {
       chunk: response,
       done: true,
     };
+  }
+
+  @EventPattern('generate-exams')
+  async handleGenerateExam(@Payload() exam: Exam) {
+    await this.examService.generateExamsQuestion(exam.id);
   }
 }

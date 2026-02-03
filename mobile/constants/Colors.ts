@@ -17,3 +17,7 @@ export default {
     tabIconSelected: tintColorDark,
   },
 };
+
+export const colors = {
+  primary: "#E71066",
+};

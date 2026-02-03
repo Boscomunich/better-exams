@@ -1,10 +1,9 @@
-interface RegisterUserPayload {
+export interface SerializableUser {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
   email: string;
-  password: string;
-  name?: string;
-}
-
-interface LoginUserPayload {
-  username: string;
-  password: string;
+  emailVerified: boolean;
+  name: string;
+  image?: string | null;
 }

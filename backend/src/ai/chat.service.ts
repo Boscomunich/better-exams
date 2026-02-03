@@ -65,20 +65,22 @@ export class AIChatService {
           ? response.content
           : JSON.stringify(response.content);
 
-      await this.prisma.message.createMany({
-        data: [
-          {
+      const [, assistantMsg] = await this.prisma.$transaction([
+        this.prisma.message.create({
+          data: {
             role: Role.USER,
             content: chat.message,
-            chatSessionId: chat?.chatSessionId as string,
+            chatSessionId: chat.chatSessionId as string,
           },
-          {
+        }),
+        this.prisma.message.create({
+          data: {
             role: Role.ASSISTANT,
             content: parsedResponse,
-            chatSessionId: chat?.chatSessionId as string,
+            chatSessionId: chat.chatSessionId as string,
           },
-        ],
-      });
+        }),
+      ]);
 
       await this.chatMemory.updateMemoryState(
         chatSession?.id ?? '',
@@ -86,7 +88,7 @@ export class AIChatService {
         vectorToDocument as PineconeRecord,
       );
 
-      return parsedResponse;
+      return [assistantMsg];
     }
     if (resolvedData.requiresRouting) {
       routerDecision = await this.router.route({
@@ -126,27 +128,29 @@ export class AIChatService {
           ? response.content
           : JSON.stringify(response.content);
 
-      await this.prisma.message.createMany({
-        data: [
-          {
+      const [, assistantMsg] = await this.prisma.$transaction([
+        this.prisma.message.create({
+          data: {
             role: Role.USER,
             content: chat.message,
-            chatSessionId: chat?.chatSessionId as string,
+            chatSessionId: chat.chatSessionId as string,
           },
-          {
+        }),
+        this.prisma.message.create({
+          data: {
             role: Role.ASSISTANT,
             content: parsedResponse,
-            chatSessionId: chat?.chatSessionId as string,
+            chatSessionId: chat.chatSessionId as string,
           },
-        ],
-      });
+        }),
+      ]);
 
       await this.chatMemory.updateMemoryState(
         chatSession?.id ?? '',
         resolvedData.rewrittenQuery,
       );
 
-      return parsedResponse;
+      return [assistantMsg];
     }
   }
 

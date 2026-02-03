@@ -1,7 +1,19 @@
 import { Exam } from '@prisma/client';
 
 export function generateExamPrompt(exam: Exam): string {
-  const examData = JSON.stringify(exam, null, 2);
+  const safeExam = {
+    id: exam.id,
+    title: exam.title,
+    type: exam.type,
+    difficulty: exam.difficulty,
+    duration: exam.duration,
+    numberOfQuestions: exam.numberOfQuestions,
+    courseId: exam.courseId,
+    passScore: exam.passScore,
+    instruction: exam.instruction,
+    topics: exam.topics,
+  };
+  const examData = JSON.stringify(safeExam, null, 2);
   return `
     You are an expert assessment designer and subject-matter examiner.
 
@@ -100,6 +112,8 @@ export function generateExamPrompt(exam: Exam): string {
     - "timeLimit": number in seconds (optional, 60-600)
     - "learningObjective": string (optional)
 
+    IMPORTANT: The example provided in the 'EXPECTED OUTPUT' section is for formatting purposes only. Do NOT generate questions about Cell Biology unless it is explicitly contained within the provided Document Context.
+
     3. TYPE-SPECIFIC REQUIREMENTS:
 
     A. MULTIPLE_CHOICE (AnswerFormat: SINGLE or MULTIPLE):
@@ -197,24 +211,27 @@ export function generateExamPrompt(exam: Exam): string {
     EXAMPLE OF CORRECT STRUCTURE:
     {
         "questions": [
-            "id": "q1",
-            "type": "MULTIPLE_CHOICE",
-            "text": "What is the primary function of mitochondria?",
-            "points": 5,
-            "difficulty": "MEDIUM",
-            "topic": "Cell Biology",
-            "options": [
-                {"id": "A", "text": "Protein synthesis", "isCorrect": false, "feedback": "That's the ribosome's function."},
-                {"id": "B", "text": "Energy production", "isCorrect": true, "feedback": "Correct! Mitochondria produce ATP."},
-                {"id": "C", "text": "DNA storage", "isCorrect": false, "feedback": "The nucleus stores DNA."},
-                {"id": "D", "text": "Waste removal", "isCorrect": false, "feedback": "Lysosomes handle waste removal."}
-            ],
-            "answerFormat": "SINGLE"
+            {
+                "id": "q1",
+                "type": "MULTIPLE_CHOICE",
+                "text": "[Insert question text here based on source document]",
+                "points": 5,
+                "difficulty": "MEDIUM",
+                "topic": "[Relevant Topic from Document]",
+                "options": [
+                    {"id": "A", "text": "[Distractor 1]", "isCorrect": false, "feedback": "[Explanation]"},
+                    {"id": "B", "text": "[Correct Answer]", "isCorrect": true, "feedback": "[Explanation]"},
+                    {"id": "C", "text": "[Distractor 2]", "isCorrect": false, "feedback": "[Explanation]"},
+                    {"id": "D", "text": "[Distractor 3]", "isCorrect": false, "feedback": "[Explanation]"}
+                ],
+                "answerFormat": "SINGLE"
+            }
         ]
         "metadata": {
-            "totalPoints": 100,
-            "estimatedDuration": 90,
-            "timeLimit": 120
+            "totalPoints": DEPENDENT ON EXAM SETTINGS,
+            "estimatedDuration": DEPENDENT ON EXAMS SETTINGS,
+            "timeLimit": DEPENDENT ON EXAM SETTINGS
+
         }
     }
 

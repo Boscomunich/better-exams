@@ -18,6 +18,7 @@ export class CreateExamDto {
   @IsNotEmpty({ message: 'Exam type is required' })
   @IsArray({ message: 'Exam type must be an array' })
   @IsEnum(ExamType, {
+    each: true,
     message: `Exam type must be one of: ${Object.values(ExamType).join(', ')}`,
   })
   type: ExamType[];

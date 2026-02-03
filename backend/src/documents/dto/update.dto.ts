@@ -6,5 +6,14 @@ export class UpdateDocumentsDto {
 
   @IsArray()
   @IsString({ each: true, message: 'documents id array is required' })
-  documentsIds: string[];
+  documentIds: string[];
+}
+
+export class AddDocumentsToChatDto {
+  @IsString({ message: 'chatId is required' })
+  chatSessionId: string;
+
+  @IsArray()
+  @IsString({ each: true, message: 'documents id array is required' })
+  documentIds: string[];
 }

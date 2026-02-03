@@ -1,6 +1,0 @@
-POST	/api/auth/sign-up	Register a new user
-POST	/api/auth/sign-in	Login with email & password
-POST	/api/auth/sign-out	Logout current session
-POST	/api/auth/forgot-password	Request a password reset (your sendResetPassword is empty)
-POST	/api/auth/reset-password	Reset password with token
-GET	/api/auth/session	Get current session info

@@ -16,7 +16,7 @@ import { UserSession } from '@thallesp/nestjs-better-auth';
 import { UploadFilesDto } from './dto/create.dto';
 import { DeleteDocumentsDto } from './dto/delete.dto';
 import { FetchDocDto } from './dto/fetchdocs.dto';
-import { UpdateDocumentsDto } from './dto/update.dto';
+import { AddDocumentsToChatDto, UpdateDocumentsDto } from './dto/update.dto';
 
 @Controller('documents')
 export class DocumentsController {
@@ -59,5 +59,15 @@ export class DocumentsController {
   @Patch('removeCourse')
   async removeDocumentsFromCourse(@Body() data: UpdateDocumentsDto) {
     return await this.documentsService.removeDocumentsFromCourse(data);
+  }
+
+  @Patch('addDocumentsToChat')
+  async addDocumentsToChat(@Body() data: AddDocumentsToChatDto) {
+    return await this.documentsService.addDocumentsToChat(data);
+  }
+
+  @Patch('removeDocumentsFromChat')
+  async removeDocumentsToChat(@Body() data: AddDocumentsToChatDto) {
+    return await this.documentsService.removeDocumentsFromChat(data);
   }
 }

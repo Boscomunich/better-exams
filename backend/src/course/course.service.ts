@@ -32,16 +32,14 @@ export class CourseService {
 
     const [courses, totalCount] = await Promise.all([
       this.prisma.course.findMany({
-        where: {
-          userId,
-        },
+        where: { userId },
         include: {
           documents: true,
         },
         orderBy: {
           createdAt: data.order,
         },
-        skip: skip,
+        skip,
         take: data.limit,
       }),
       this.prisma.course.count({
@@ -49,9 +47,22 @@ export class CourseService {
       }),
     ]);
 
+    const sanitizedCourses = courses.map((course) => ({
+      ...course,
+      documents: course.documents.map((doc) => ({
+        ...doc,
+        fileSize: doc.fileSize.toString(),
+        createdAt: doc.createdAt.toISOString(),
+        updatedAt: doc.updatedAt.toISOString(),
+        vectorizedAt: doc.vectorizedAt?.toISOString(),
+      })),
+      createdAt: course.createdAt.toISOString(),
+      updatedAt: course.updatedAt.toISOString(),
+    }));
+
     return {
-      message: 'sucessful',
-      data: courses,
+      message: 'successful',
+      data: sanitizedCourses,
       meta: {
         totalCount,
         currentPage: data.page,
@@ -84,5 +95,31 @@ export class CourseService {
       data: course,
       message: `course ${course.title} has been deleted sucessfully`,
     };
+  }
+
+  async getCourseById(id: string) {
+    const course = await this.prisma.course.findFirst({
+      where: { id },
+      include: {
+        documents: true,
+      },
+    });
+
+    if (!course) return null;
+
+    const sanitizedDocuments = course.documents.map((doc) => ({
+      ...doc,
+      fileSize: doc.fileSize.toString(),
+      createdAt: doc.createdAt.toISOString(),
+      updatedAt: doc.updatedAt.toISOString(),
+      vectorizedAt: doc.vectorizedAt?.toISOString(),
+    }));
+
+    const sanitizedCourse = {
+      ...course,
+      documents: sanitizedDocuments,
+    };
+
+    return sanitizedCourse;
   }
 }

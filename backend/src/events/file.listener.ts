@@ -28,12 +28,13 @@ export class DocumentsListener {
         files.map(async (file) => {
           const key = `uploads/${Date.now()}-${file.originalname}`;
           const fileUrl = await uploadFileStream(file, key);
+          const cleanName = decodeURIComponent(file.originalname);
 
           return {
             key,
             fileUrl,
             fileBuffer: file.buffer,
-            originalName: file.originalname,
+            originalName: cleanName,
             mimeType: file.mimetype,
           };
         }),
@@ -41,9 +42,10 @@ export class DocumentsListener {
 
       /** STEP 2 — Write all to DB */
       for (const file of s3Uploads) {
+        const cleanName = decodeURIComponent(file.originalName);
         const document = await prisma.document.create({
           data: {
-            title: file.originalName,
+            title: cleanName,
             fileUrl: file.fileUrl,
             fileKey: file.key,
             fileType: file.mimeType,

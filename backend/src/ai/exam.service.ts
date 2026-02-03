@@ -2,7 +2,6 @@ import { ChatOpenAI } from '@langchain/openai';
 import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { VectorizeService } from 'src/vectorize/vectorize.service';
-import { createAgent, ReactAgent } from 'langchain';
 import { QuestionSchema } from 'types/exams';
 import z from 'zod';
 import { TokenUtils } from './utils/token.counter';
@@ -11,8 +10,8 @@ import { generateExamPrompt } from 'libs/generate-exam';
 
 @Injectable()
 export class AIExamService {
-  private readonly examAgent: ReactAgent;
-  private readonly summaryAgent: ReactAgent;
+  private readonly examGenerator: any;
+  private readonly summaryGenerator: any;
 
   private static readonly SUMMARIZATION_TRIGGER = 50_000;
   private static readonly BATCH_TARGET_TOKENS = 30_000;
@@ -23,15 +22,13 @@ export class AIExamService {
     private readonly prisma: PrismaService,
     private readonly vectorizeService: VectorizeService,
   ) {
-    this.examAgent = createAgent({
-      model: this.heavyModel,
-      responseFormat: AIExamService.ExamStructureResponseSchema,
-    });
+    this.examGenerator = this.heavyModel.withStructuredOutput(
+      AIExamService.ExamStructureResponseSchema,
+    );
 
-    this.summaryAgent = createAgent({
-      model: this.model,
-      responseFormat: AIExamService.DocumentBatchSummarySchema,
-    });
+    this.summaryGenerator = this.model.withStructuredOutput(
+      AIExamService.DocumentBatchSummarySchema,
+    );
   }
 
   async generateExamsQuestion(id: string) {
@@ -91,39 +88,51 @@ export class AIExamService {
         - Do NOT reference documents across summaries
         -Summarize into a dense factual list of definitions/concepts`;
 
-        const result = await this.summaryAgent.invoke({
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: batchInput },
-          ],
-        });
+        const result = await this.summaryGenerator.invoke([
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: batchInput },
+        ]);
 
-        const parsed = AIExamService.DocumentBatchSummarySchema.parse(
-          result.structuredResponse,
-        );
-
-        Object.assign(finalDocuments, parsed.summaries);
+        Object.assign(finalDocuments, result.summaries);
       }
     }
-    const systemPrompt = generateExamPrompt(exam);
-    const userPrompt = JSON.stringify(finalDocuments, null, 2);
-    const result = await this.examAgent.invoke({
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-    });
-    const questions = AIExamService.ExamStructureResponseSchema.parse(
-      result.structuredResponse,
-    );
 
-    await this.prisma.exam.update({
+    // Remove chunks from exam-level documents
+    exam.documents = exam.documents.map((doc) => ({
+      ...doc,
+      chunks: [],
+    }));
+
+    // Remove chunks from course-level documents
+    if (exam.course) {
+      exam.course.documents = exam.course.documents.map((doc) => ({
+        ...doc,
+        chunks: [],
+      }));
+    }
+
+    const systemPrompt = generateExamPrompt(exam);
+    const userPrompt = `
+      SOURCE MATERIAL (USE THIS ONLY):
+      ${JSON.stringify(finalDocuments, null, 2)}
+
+      TASK:
+      Generate the exam questions now based ONLY on the documents provided above. 
+    `;
+
+    const questions = await this.examGenerator.invoke([
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ]);
+    const update = await this.prisma.exam.update({
       where: { id },
       data: {
         examStructure: questions,
         questionsStatus: 'COMPLETED',
       },
     });
+
+    console.log(update.examStructure);
   }
 
   private static readonly DocumentBatchSummarySchema = z.object({

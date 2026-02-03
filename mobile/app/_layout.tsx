@@ -13,7 +13,7 @@ import { SplashScreen, Stack } from "expo-router";
 import Provider from "./Provider";
 import { Provider as StoreProvider } from "react-redux";
 import { store } from "libs/store";
-import { loadAuth } from "@/libs/loadauth";
+import "react-native-url-polyfill/auto";
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -33,10 +33,6 @@ export default function RootLayout() {
     Inter: require("@tamagui/font-inter/otf/Inter-Medium.otf"),
     InterBold: require("@tamagui/font-inter/otf/Inter-Bold.otf"),
   });
-
-  useEffect(() => {
-    loadAuth();
-  }, []);
 
   useEffect(() => {
     if (interLoaded || interError) {
